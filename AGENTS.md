@@ -37,7 +37,15 @@ Do not consider a task complete until implementation, testing, independent revie
 12. If meaningful problems are found, create a corrective implementation plan before fixing them.
 13. Repeat implementation → testing → review until no meaningful unresolved problems remain.
 14. Do not loop endlessly over cosmetic or purely speculative issues.
-15. At completion, create or update `IMPLEMENTATION_SUMMARY.md`.
+15. At completion, create or update `IMPLEMENTATION_SUMMARY.md` only when the current task has uncommitted changes.
+
+## Subagent Model Routing
+
+Select the model when delegating work based on the nature of the role.
+
+* Use **sol** (`gpt-5.6-sol`) for reasoning-heavy work: Lead Engineer analysis, Explorer, Planner, Test-Case Designer, Reviewer, validation analysis, and corrective planning.
+* Use **luna** (`gpt-5.6-luna`) for action-oriented work: Implementer, Tester, corrective implementation, and repeat test execution.
+* The Lead Engineer must keep the Test-Case Designer and Tester as separate subagents. Do not assign both roles to one agent in the same task.
 
 ---
 
@@ -88,11 +96,35 @@ For coding tasks, operate as the Lead Engineer and coordinate the following spec
 
 ---
 
+## Workflow and Model Routing
+
+```text
+Lead / Explorer / Planner (sol)
+  -> Test-Case Designer (sol)
+  -> Implementer (luna)
+  -> Tester (luna, separate agent from Test-Case Designer)
+  -> Reviewer / Validation Analysis (sol)
+  -> Corrective Planning (sol), then corrective implementation and testing (luna) when needed
+```
+
 # Agent Responsibilities
+
+## Test-Case Designer
+
+The Test-Case Designer is a **sol** subagent responsible for deriving test coverage from the original requirement before implementation.
+
+Responsibilities:
+
+* Inspect the requirement and relevant repository behavior.
+* Define happy-path, negative, boundary, regression, and failure-mode scenarios that apply.
+* Identify expected outcomes and test data or setup needs.
+* Return the test-case specification to the Lead Engineer and Tester.
+
+The Test-Case Designer MUST NOT be the Tester for the same task and must not rely on the Implementer's conclusions.
 
 ## Lead Engineer
 
-The Lead Engineer owns the overall task.
+The Lead Engineer owns the overall task and performs reasoning-heavy orchestration using **sol**.
 
 Responsibilities:
 
@@ -121,7 +153,7 @@ All findings must be evaluated against:
 
 ## Explorer
 
-The Explorer is responsible for understanding the repository before implementation.
+The Explorer is a **sol** subagent responsible for understanding the repository before implementation.
 
 The Explorer MUST NOT modify code.
 
@@ -266,11 +298,17 @@ Do not start coding until this plan has been presented.
 
 If user approval is explicitly required by the current workflow, wait for approval before continuing.
 
+# Phase 3 — Test-Case Design
+
+Before implementation, delegate test-case design to an independent **Test-Case Designer** using **sol**. The designer must produce a test-case specification from the original requirement and repository context, covering applicable happy paths, negative cases, boundaries, regressions, and failure modes.
+
+The specification guides testing but does not constrain the Tester from finding additional issues. Do not begin implementation until it has been returned or its absence is explicitly documented as not applicable.
+
 ---
 
-# Phase 3 — Implementation
+# Phase 4 — Implementation
 
-After the plan is approved or established, delegate implementation to the **Implementer**.
+After the plan and test-case specification are established, delegate implementation to the **Implementer** using **luna**.
 
 ## Implementer Responsibilities
 
@@ -307,15 +345,16 @@ Do not weaken or remove existing tests merely to make implementation pass.
 
 ---
 
-# Phase 4 — Independent Testing
+# Phase 5 — Independent Testing
 
-After implementation, delegate verification to an independent **Tester**.
+After implementation, delegate verification to an independent **Tester** using **luna**. The Tester must be a different subagent from the Test-Case Designer.
 
 The Tester should not assume the Implementer's code is correct.
 
 The Tester must inspect both:
 
 * The requirement
+* The test-case specification
 * The actual implementation
 
 Test where applicable:
@@ -358,9 +397,9 @@ Never report a test as passed unless it actually ran successfully.
 
 ---
 
-# Phase 5 — Independent Code Review
+# Phase 6 — Independent Code Review
 
-Delegate review to an independent **Reviewer**.
+Delegate review to an independent **Reviewer** using **sol**.
 
 The Reviewer must review the changes as if reviewing another engineer's pull request.
 
@@ -459,7 +498,7 @@ Explicitly identify:
 
 ---
 
-# Phase 6 — Validation
+# Phase 7 — Validation
 
 After implementation and review, validate the final state.
 
@@ -513,7 +552,7 @@ Produce:
 
 ---
 
-# Phase 7 — Review Findings
+# Phase 8 — Review Findings
 
 The Lead Engineer must combine Tester and Reviewer findings.
 
@@ -559,7 +598,7 @@ Example:
 
 ---
 
-# Phase 8 — Corrective Loop
+# Phase 9 — Corrective Loop
 
 If any meaningful issue is discovered, including:
 
@@ -600,13 +639,14 @@ create:
 
 Then:
 
-1. Delegate fixes to the Implementer.
-2. Add/update tests.
-3. Delegate testing to the Tester again.
-4. Delegate review to the Reviewer again.
-5. Validate again.
-6. Reassess risks.
-7. Repeat when necessary.
+1. Delegate corrective planning to **sol**.
+2. Delegate fixes to the Implementer using **luna**.
+3. Add/update tests.
+4. Delegate testing to a Tester using **luna**; it must remain separate from the Test-Case Designer.
+5. Delegate review to a Reviewer using **sol**.
+6. Validate again.
+7. Reassess risks using **sol**.
+8. Repeat when necessary.
 
 The loop is:
 
@@ -651,19 +691,23 @@ The following separation is important.
 
 ## Implementer
 
-Responsible for creating the solution.
+Responsible for creating the solution using **luna**.
+
+## Test-Case Designer
+
+Responsible for translating the original requirement into an independent test-case specification using **sol**. This role must not execute the testing for the same task.
 
 ## Tester
 
-Responsible for trying to prove the solution is broken through testing.
+Responsible for trying to prove the solution is broken through testing using **luna**. This role must be a different subagent from the Test-Case Designer.
 
 ## Reviewer
 
-Responsible for trying to find problems through code inspection and reasoning.
+Responsible for trying to find problems through code inspection and reasoning using **sol**.
 
-The Tester and Reviewer should independently inspect the requirement.
+The Test-Case Designer, Tester, and Reviewer should independently inspect the requirement.
 
-Do not simply give them the Implementer's conclusion and ask them to confirm it.
+Do not simply give them the Implementer's conclusion and ask them to confirm it. The Tester must use the test-case specification, original requirement, and changed files/diff as inputs, while remaining free to test additional scenarios.
 
 When possible, provide:
 
@@ -737,15 +781,19 @@ Document meaningful tradeoffs.
 
 # Final Completion Report
 
-After work is complete, create or update:
+Before creating or updating a summary, inspect `git status` and recent Git history. A committed change belongs to a completed task and MUST NOT be added to, revised in, or otherwise represented by the current task's summary.
+
+Create or update a summary only when the current task has relevant uncommitted changes:
 
 ```text
 IMPLEMENTATION_SUMMARY.md
 ```
 
+If there are no relevant uncommitted changes, do not create or update `IMPLEMENTATION_SUMMARY.md`.
+
 Do not create a new report for every corrective iteration.
 
-Maintain one final task summary representing the final state.
+Maintain one final task summary representing only the current uncommitted task state. Do not include prior committed work.
 
 Use:
 
@@ -840,14 +888,15 @@ Use this order:
 1. `Task Analysis`
 2. `Implementation Plan`
 3. Wait for approval when required
-4. Implementation
-5. Independent Testing
-6. Independent Review
-7. `Validation Results`
-8. `Review Findings`
-9. `Corrective Implementation Plan` when necessary
-10. Repeat implementation/testing/review/validation as necessary
-11. `Final Summary`
+4. Test-Case Design
+5. Implementation
+6. Independent Testing
+7. Independent Review
+8. `Validation Results`
+9. `Review Findings`
+10. `Corrective Implementation Plan` when necessary
+11. Repeat implementation/testing/review/validation as necessary
+12. `Final Summary`
 
 Do not skip directly to coding.
 
@@ -860,6 +909,7 @@ A task is complete only when:
 * [ ] Task was analyzed.
 * [ ] Relevant repository code was inspected.
 * [ ] Implementation plan was presented before coding.
+* [ ] Test-case specification was created by a separate Test-Case Designer, or documented as not applicable.
 * [ ] Implementation follows the established plan.
 * [ ] Unit tests were added or updated.
 * [ ] Relevant unit tests pass.
@@ -867,6 +917,7 @@ A task is complete only when:
 * [ ] Static analysis was run where available.
 * [ ] Race conditions were considered where applicable.
 * [ ] Race detection was run when appropriate and possible.
+* [ ] Tester was a different subagent from the Test-Case Designer.
 * [ ] Tester independently evaluated the implementation.
 * [ ] Reviewer independently reviewed the implementation.
 * [ ] Final diff was reviewed.
@@ -877,6 +928,7 @@ A task is complete only when:
 * [ ] Requirement alignment was assessed.
 * [ ] Corrective loops were completed when required.
 * [ ] Remaining uncertainty was documented.
-* [ ] `IMPLEMENTATION_SUMMARY.md` was created or updated.
+* [ ] Git status and recent history were checked before summary handling.
+* [ ] `IMPLEMENTATION_SUMMARY.md` was created or updated only for relevant uncommitted changes, or intentionally left unchanged because none existed.
 
 Only after these conditions are reasonably satisfied should the task be considered complete.
