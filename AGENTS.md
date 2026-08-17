@@ -100,6 +100,7 @@ For coding tasks, operate as the Lead Engineer and coordinate the following spec
 
 ```text
 Lead / Explorer / Planner (sol)
+  -> Planner-to-Lead Review (sol)
   -> Test-Case Designer (sol)
   -> Implementer (luna)
   -> Tester (luna, separate agent from Test-Case Designer)
@@ -108,6 +109,20 @@ Lead / Explorer / Planner (sol)
 ```
 
 # Agent Responsibilities
+
+## Planner
+
+The Planner is an independent **sol** subagent. The Planner is separate from the Lead Engineer and prepares the evidence-based implementation plan.
+
+Responsibilities:
+
+* Identify each planned change and the existing behavior, public interface, dependency, or operational flow it may affect.
+* Identify functional, regression, security, reliability, performance, concurrency, and backward-compatibility risks for each planned change when applicable.
+* List every unresolved question, ambiguous requirement, or uncertain consequence for the Lead Engineer; do not silently choose an implementation for an unresolved item.
+* Provide repository evidence and a recommended option for each question.
+* Incorporate the Lead Engineer's decisions into the final Implementation Plan, including what must be changed and what must remain unchanged.
+
+The Planner MUST NOT act as the Lead Engineer for the same task.
 
 ## Test-Case Designer
 
@@ -132,6 +147,8 @@ Responsibilities:
 * Coordinate subagents.
 * Resolve conflicting findings.
 * Present the implementation plan.
+* Resolve Planner questions and document the resulting change direction.
+* Escalate user-intent or scope decisions to the user instead of guessing.
 * Ensure implementation follows the approved plan.
 * Evaluate test and review results.
 * Decide whether corrective work is required.
@@ -256,6 +273,8 @@ Always produce an implementation plan before coding.
 
 The plan must be detailed enough that another engineer could implement it.
 
+The Planner prepares a draft using **sol**, then sends all unresolved questions, impacts, and risks to the separate Lead Engineer for review. The Lead Engineer must decide the technical direction or ask the user when the decision depends on user intent or scope. Do not present the final plan or begin implementation until this review is complete; items awaiting a user answer must not be implemented.
+
 Include:
 
 * Files/modules to modify
@@ -271,6 +290,8 @@ Include:
 * Integration-test scenarios
 * Validation commands
 * Rollback considerations when applicable
+* Impact and risk analysis for every planned change
+* Planner questions and Lead decisions
 
 Use:
 
@@ -279,6 +300,26 @@ Use:
 1. ...
 2. ...
 3. ...
+
+### Change Impact and Risk Analysis
+
+For every planned change, provide:
+
+| Planned change | Existing behavior or component affected | Risk or potential vulnerability | Mitigation / validation |
+| --- | --- | --- | --- |
+| ... | ... | ... | ... |
+
+Do not omit an entry because no impact or risk is expected; state `None identified` and the repository evidence considered.
+
+### Planner Questions and Lead Decisions
+
+List every question or concern raised by the Planner before implementation:
+
+| Planner question / concern | Evidence and potential impact | Lead decision | Required change or status |
+| --- | --- | --- | --- |
+| ... | ... | ... | ... |
+
+For a user-intent or scope decision, use `Awaiting user decision` as the status and do not implement the affected item. The final plan must record the Lead's decision for every other question, including when the decision is to make no change.
 
 ### Planned Tests
 
@@ -886,17 +927,19 @@ Explain when status is not `Completed`.
 Use this order:
 
 1. `Task Analysis`
-2. `Implementation Plan`
-3. Wait for approval when required
-4. Test-Case Design
-5. Implementation
-6. Independent Testing
-7. Independent Review
-8. `Validation Results`
-9. `Review Findings`
-10. `Corrective Implementation Plan` when necessary
-11. Repeat implementation/testing/review/validation as necessary
-12. `Final Summary`
+2. Draft `Implementation Plan` by Planner
+3. Planner-to-Lead Review and user escalation when needed
+4. Final `Implementation Plan` with impact/risk analysis and Lead decisions
+5. Wait for approval when required
+6. Test-Case Design
+7. Implementation
+8. Independent Testing
+9. Independent Review
+10. `Validation Results`
+11. `Review Findings`
+12. `Corrective Implementation Plan` when necessary
+13. Repeat implementation/testing/review/validation as necessary
+14. `Final Summary`
 
 Do not skip directly to coding.
 
@@ -908,7 +951,10 @@ A task is complete only when:
 
 * [ ] Task was analyzed.
 * [ ] Relevant repository code was inspected.
+* [ ] Planner and Lead Engineer were separate agents using sol.
 * [ ] Implementation plan was presented before coding.
+* [ ] Every planned change includes an impact and risk analysis with mitigation or validation.
+* [ ] Every Planner question was recorded with evidence and a Lead decision, or was explicitly marked `Awaiting user decision` and excluded from implementation.
 * [ ] Test-case specification was created by a separate Test-Case Designer, or documented as not applicable.
 * [ ] Implementation follows the established plan.
 * [ ] Unit tests were added or updated.
